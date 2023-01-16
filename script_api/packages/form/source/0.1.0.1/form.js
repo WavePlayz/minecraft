@@ -1,12 +1,12 @@
 
 import { 
-	MessageFormData
+	MessageFormData,
 	ActionFormData,
 	ModalFormData
 } from "@minecraft/server-ui"
 
 const FORMS = { 
-	MessageFormData
+	MessageFormData,
 	ActionFormData,
 	ModalFormData
 }
@@ -15,7 +15,7 @@ const FORMS = {
 class FormOption {
 	static VERSION = "0.1.0.1"
 	
-	constructor ({ force, timeout }) {
+	constructor ({ force, timeout } = {}) {
 		this.force = Boolean( force )
 		this.timeout = this.parseInt( timeout )
 	}
@@ -27,19 +27,20 @@ class FormOption {
 
 
 export class Form {
-	static VERSION = "0.1.0.1"
+	static VERSION = "0.1.0.2"
 	
 	#form = null
+	#handlers = []
+	#hasFields = false
+	#isFirstFirst = false
 	
 	constructor (title, body, options) {
 		this.title = title
 		this.body = body
-		
-		this.#hasFields = false
 	}
 	
 	#initHandlers () {
-		this.handlers = []
+		this.#handlers = []
 	}
 	
 	#validateForm (value) {
@@ -70,7 +71,7 @@ export class Form {
 	#validateField (value) {
 		this.#validateForm( this.#form )
 		
-		if (value in this.#form) {
+		if (!(value in this.#form)) {
 			throw new ReferenceError( value + " does not exist in " + this.#form.constructor.name )
 		}
 	}
@@ -86,7 +87,7 @@ export class Form {
 		
 		this.#form[ name ]( ...args )
 		
-		this.handlers.push(null)
+		this.#handlers.push(null)
 		
 		this.#hasFields = true
 		
@@ -94,6 +95,10 @@ export class Form {
 	}
 	
 	first () {
+		if (this.#hasFields == false) {
+			this.#isFirstFirst = true
+		}
+		
 		this.field( "button1", ...arguments )
 		
 		return this
@@ -147,9 +152,9 @@ export class Form {
 		this.#validateFields()
 		this.#validateFunction(value)
 		
-		const length = this.handlers.length
+		const length = this.#handlers.length
 		
-		this.handlers[ length - 1 ] = value
+		this.#handlers[ length - 1 ] = value
 		
 		return this
 	}
@@ -160,24 +165,27 @@ export class Form {
 		}
 	}
 	
-	#callHandler () {
-		
-	}
-	
-	#handleResponse (response) {
+	#handleResponse (response, player) {
 		const {
 			selection,
 			formValues
 		} = response
 		
-		const values = selection ? [selection] : formValues
+		let values = formValues
+		
+		if (selection != null) {
+			values = []
+			values[selection] = selection
+		}
 		
 		values.forEach( (value, index) => {
 			const data = {
 				player, response, value
 			}
 			
-			this.#handlers[ index ]?.( data )
+			let indexInvert = Math.abs( index - 1 )
+			
+			this.#handlers[  this.#isFirstFirst ? indexInvert : index ]?.( data )
 		} )
 		
 	}
@@ -186,12 +194,18 @@ export class Form {
 		this.#validateFields()
 		this.#validatePlayer( player )
 		
-		const formOption new FormOption( options )
+		const formOption = new FormOption( options )
 		
-		const handleResponse = v => this.#handleResponse( v )
+		const showForm = () => this.#form.show(player)
+		const handleResponse = v => this.#handleResponse( v, player )
+		
+		
 		
 		return new Promise( async resolve => {
-			const response = await player.show( player )
+			try{
+			const response = await showForm()
+			
+			
 			
 			const { 
 				canceled,
@@ -201,6 +215,7 @@ export class Form {
 			handleResponse( response )
 			
 			resolve( response )
+			}catch(e) { console.warn( e, e.stack ) }
 		} )
 	}
 	
