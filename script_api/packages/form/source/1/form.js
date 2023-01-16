@@ -13,7 +13,7 @@ const FORMS = {
 
 
 class FormOption {
-	static VERSION = "0.1.0.1"
+	static VERSION = "1.0.0.0"
 	
 	constructor ({ force, timeout } = {}) {
 		this.force = Boolean( force )
@@ -27,7 +27,7 @@ class FormOption {
 
 
 export class Form {
-	static VERSION = "0.1.0.2"
+	static VERSION = "1.0.0.0"
 	
 	#form = null
 	#handlers = []
