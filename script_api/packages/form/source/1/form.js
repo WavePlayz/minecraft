@@ -34,6 +34,10 @@ export class Form {
 	#hasFields = false
 	#isFirstFirst = false
 	
+	#rejectHandler = null
+	#cancelHandler = null
+	#errorHandler = null
+	
 	constructor (title, body, options) {
 		this.title = title
 		this.body = body
@@ -165,6 +169,12 @@ export class Form {
 		}
 	}
 	
+	#getHandler (index) {
+		let indexInvert = Math.abs( index - 1 )
+			
+		return this.#handlers[  this.#isFirstFirst ? indexInvert : index ]
+	}
+	
 	#handleResponse (response, player) {
 		const {
 			selection,
@@ -183,11 +193,27 @@ export class Form {
 				player, response, value
 			}
 			
-			let indexInvert = Math.abs( index - 1 )
-			
-			this.#handlers[  this.#isFirstFirst ? indexInvert : index ]?.( data )
+			this.#getHandler()?.( data )
 		} )
 		
+	}
+	
+	onReject ( value ) {
+		this.#validateFunction(value)
+		
+		this.#rejectHandler = value
+	}
+	
+	onCancel ( value ) {
+		this.#validateFunction(value)
+		
+		this.#cancelHandler = value
+	}
+	
+	onError ( value ) {
+		this.#validateFunction(value)
+		
+		this.#errorHandler = value
 	}
 	
 	show (player, options) {
@@ -200,22 +226,26 @@ export class Form {
 		const handleResponse = v => this.#handleResponse( v, player )
 		
 		
-		
 		return new Promise( async resolve => {
 			try{
 			const response = await showForm()
-			
-			
 			
 			const { 
 				canceled,
 				cancelationReason
 			} = response
 			
-			handleResponse( response )
+			if (!canceled) {
+				handleResponse( response )
+			}
+			
 			
 			resolve( response )
-			}catch(e) { console.warn( e, e.stack ) }
+			
+			} catch (error) {
+				console.error( e, e.stack )
+				this.#errorHandler?.( error )
+			}
 		} )
 	}
 	
