@@ -34,9 +34,8 @@ export class Form {
 	#hasFields = false
 	#isFirstFirst = false
 	
-	#rejectHandler = null
+	#busyHandler = null
 	#cancelHandler = null
-	#errorHandler = null
 	
 	constructor (title, body, options) {
 		this.title = title
@@ -175,7 +174,7 @@ export class Form {
 		return this.#handlers[  this.#isFirstFirst ? indexInvert : index ]
 	}
 	
-	#handleResponse (response, player) {
+	#handleResponse (response) {
 		const {
 			selection,
 			formValues
@@ -189,31 +188,25 @@ export class Form {
 		}
 		
 		values.forEach( (value, index) => {
-			const data = {
-				player, response, value
+			const fieldResponse = {
+				response, value
 			}
 			
-			this.#getHandler()?.( data )
+			this.#getHandler( index )?.( fieldResponse )
 		} )
 		
 	}
 	
-	onReject ( value ) {
+	onBusy ( value ) {
 		this.#validateFunction(value)
 		
-		this.#rejectHandler = value
+		this.#busyHandler = value
 	}
 	
 	onCancel ( value ) {
 		this.#validateFunction(value)
 		
 		this.#cancelHandler = value
-	}
-	
-	onError ( value ) {
-		this.#validateFunction(value)
-		
-		this.#errorHandler = value
 	}
 	
 	show (player, options) {
@@ -223,28 +216,38 @@ export class Form {
 		const formOption = new FormOption( options )
 		
 		const showForm = () => this.#form.show(player)
-		const handleResponse = v => this.#handleResponse( v, player )
+		const handleResponse = v => this.#handleResponse( v )
 		
 		
-		return new Promise( async resolve => {
-			try{
-			const response = await showForm()
-			
-			const { 
-				canceled,
-				cancelationReason
-			} = response
-			
-			if (!canceled) {
-				handleResponse( response )
-			}
-			
-			
-			resolve( response )
-			
+		return new Promise( async (resolve, reject) => {
+			try {
+				const response = await showForm()
+				
+				const { 
+					canceled,
+					cancelationReason
+				} = response
+				
+				const formResponse = {
+					player, response
+				}
+				
+				if (canceled == false) {
+					handleResponse( formResponse )
+				}
+				
+				if ( cancelationReason == FormCancelationReason.userBusy ) {
+					this.#busyHandler?.( formResponse )
+				}
+				
+				if ( cancelationReason == FormCancelationReason.userClosed ) {
+					this.#closeHandler?.( formResponse )
+				}
+				
+				resolve( response )
+				
 			} catch (error) {
-				console.error( e, e.stack )
-				this.#errorHandler?.( error )
+				reject( { player, error } )
 			}
 		} )
 	}
