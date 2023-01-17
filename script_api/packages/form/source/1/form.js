@@ -35,7 +35,7 @@ export class Form {
 	#isFirstFirst = false
 	
 	#busyHandler = null
-	#cancelHandler = null
+	#closeHandler = null
 	
 	constructor (title, body, options) {
 		this.title = title
@@ -203,10 +203,10 @@ export class Form {
 		this.#busyHandler = value
 	}
 	
-	onCancel ( value ) {
+	onClose ( value ) {
 		this.#validateFunction(value)
 		
-		this.#cancelHandler = value
+		this.#closeHandler = value
 	}
 	
 	show (player, options) {
@@ -236,13 +236,17 @@ export class Form {
 					handleResponse( formResponse )
 				}
 				
+				let actionHandler
+				
 				if ( cancelationReason == FormCancelationReason.userBusy ) {
-					this.#busyHandler?.( formResponse )
+					actionHandler = this.#busyHandler
 				}
 				
 				if ( cancelationReason == FormCancelationReason.userClosed ) {
-					this.#closeHandler?.( formResponse )
+					actionHandler = this.#closeHandler
 				}
+				
+				actionHandler?.( formResponse )
 				
 				resolve( response )
 				
